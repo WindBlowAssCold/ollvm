@@ -1,122 +1,132 @@
-# The LLVM Compiler Infrastructure
+# ollvm
+ollvm based on llvm_15.0.1, Hikari-ollvm, Armariris.
 
-This directory and its sub-directories contain the source code for LLVM,
-a toolkit for the construction of highly optimized compilers,
-optimizers, and run-time environments.
+https://llvm.org  
+https://github.com/61bcdefg/Hikari-LLVM15  
+https://github.com/GoSSIP-SJTU/Armariris  
 
-The README briefly describes how to get started with building LLVM.
-For more information on how to contribute to the LLVM project, please
-take a look at the
-[Contributing to LLVM](https://llvm.org/docs/Contributing.html) guide.
+# Build
 
-## Getting Started with the LLVM System
+**ollvm编译**
 
-Taken from [here](https://llvm.org/docs/GettingStarted.html).
+1. cmake构建ninja build
 
-### Overview
+```bash
+cmake -S llvm -B build -G Ninja -DLLVM_ENABLE_PROJECTS="clang" -DCMAKE_BUILD_TYPE=Release -DLLVM_INCLUDE_TESTS=OFF 
 
-Welcome to the LLVM project!
+#  使用vscmd-x86编译llvm-x86
+#  使用vscmd-x64编译llvm-x64
 
-The LLVM project has multiple components. The core of the project is
-itself called "LLVM". This contains all of the tools, libraries, and header
-files needed to process intermediate representations and convert them into
-object files. Tools include an assembler, disassembler, bitcode analyzer, and
-bitcode optimizer. It also contains basic regression tests.
+# before llvm 15
+-DLLVM_ENABLE_NEW_PASS_MANAGER=OFF
+# 只编译x86架构
+-DLLVM_TARGETS_TO_BUILD=X86
+# 动态链接来链接LLVM库,节省空间
+-DBUILD_SHARED_LIBS=On
 
-C-like languages use the [Clang](http://clang.llvm.org/) frontend. This
-component compiles C, C++, Objective-C, and Objective-C++ code into LLVM bitcode
--- and from there into object files, using LLVM.
+cmake --build build -j16
+```
 
-Other components include:
-the [libc++ C++ standard library](https://libcxx.llvm.org),
-the [LLD linker](https://lld.llvm.org), and more.
+2. 使用vs build
 
-### Getting the Source Code and Building LLVM
+```bash
+mkdir build
+cd build
+cmake -DLLVM_ENABLE_PROJECTS=clang -G "Visual Studio 15 2017" -A x64 -Thost=x64 ..\llvm -DLLVM_TARGETS_TO_BUILD=X86
+```
 
-The LLVM Getting Started documentation may be out of date. The [Clang
-Getting Started](http://clang.llvm.org/get_started.html) page might have more
-accurate information.
 
-This is an example work-flow and configuration to get and build the LLVM source:
+## Usage
 
-1. Checkout LLVM (including related sub-projects like Clang):
+```bash
+The following flags are supported
 
-     * ``git clone https://github.com/llvm/llvm-project.git``
+# Enable Bogus Control Flow
+-mllvm -enable-bcf (√)
 
-     * Or, on windows, ``git clone --config core.autocrlf=false
-    https://github.com/llvm/llvm-project.git``
+# Enable Control Flow Flattening
+-mllvm -enable-fla (√)
 
-2. Configure and build LLVM and Clang:
+#Enable Basic Block Spliting
+-mllvm -enable-split (√)
 
-     * ``cd llvm-project``
+#Enable Instruction Substitution
+-mllvm -enable-sub (√)
 
-     * ``cmake -S llvm -B build -G <generator> [options]``
+#Enable Register-Based Indirect Branching
+-mllvm -enable-indibran (√)
 
-        Some common build system generators are:
+#Enable String Encryption
+-mllvm -enable-sobf (√)
 
-        * ``Ninja`` --- for generating [Ninja](https://ninja-build.org)
-          build files. Most llvm developers use Ninja.
-        * ``Unix Makefiles`` --- for generating make-compatible parallel makefiles.
-        * ``Visual Studio`` --- for generating Visual Studio projects and
-          solutions.
-        * ``Xcode`` --- for generating Xcode projects.
+#Enable Constant Encryption
+-mllvm -enable-constenc (√)
+```
 
-        Some common options:
+## Advance
 
-        * ``-DLLVM_ENABLE_PROJECTS='...'`` and ``-DLLVM_ENABLE_RUNTIMES='...'`` ---
-          semicolon-separated list of the LLVM sub-projects and runtimes you'd like to
-          additionally build. ``LLVM_ENABLE_PROJECTS`` can include any of: clang,
-          clang-tools-extra, cross-project-tests, flang, libc, libclc, lld, lldb,
-          mlir, openmp, polly, or pstl. ``LLVM_ENABLE_RUNTIMES`` can include any of
-          libcxx, libcxxabi, libunwind, compiler-rt, libc or openmp. Some runtime
-          projects can be specified either in ``LLVM_ENABLE_PROJECTS`` or in
-          ``LLVM_ENABLE_RUNTIMES``.
+### BogusControlFlow
 
-          For example, to build LLVM, Clang, libcxx, and libcxxabi, use
-          ``-DLLVM_ENABLE_PROJECTS="clang" -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi"``.
+```bash
 
-        * ``-DCMAKE_INSTALL_PREFIX=directory`` --- Specify for *directory* the full
-          path name of where you want the LLVM tools and libraries to be installed
-          (default ``/usr/local``). Be careful if you install runtime libraries: if
-          your system uses those provided by LLVM (like libc++ or libc++abi), you
-          must not overwrite your system's copy of those libraries, since that
-          could render your system unusable. In general, using something like
-          ``/usr`` is not advised, but ``/usr/local`` is fine.
+-bcf_onlyjunkasm
+# 在虚假块中只插入花指令
 
-        * ``-DCMAKE_BUILD_TYPE=type`` --- Valid options for *type* are Debug,
-          Release, RelWithDebInfo, and MinSizeRel. Default is Debug.
+-bcf_junkasm
+# 在虚假块中插入花指令，干扰IDA对函数的识别。默认关闭
 
-        * ``-DLLVM_ENABLE_ASSERTIONS=On`` --- Compile with assertion checks enabled
-          (default is Yes for Debug builds, No for all other build types).
+-bcf_junkasm_minnum
+# 在虚假块中花指令的最小数量。默认为2
 
-      * ``cmake --build build [-- [options] <target>]`` or your build system specified above
-        directly.
+-bcf_junkasm_maxnum
+# 在虚假块中花指令的最大数量。默认为4
 
-        * The default target (i.e. ``ninja`` or ``make``) will build all of LLVM.
+-bcf_createfunc
+# 使用函数封装不透明谓词。默认关闭
+```
 
-        * The ``check-all`` target (i.e. ``ninja check-all``) will run the
-          regression tests to ensure everything is in working order.
+### ConstantEncryption
 
-        * CMake will generate targets for each tool and library, and most
-          LLVM sub-projects generate their own ``check-<project>`` target.
+```bash
+# 修改自https://iosre.com/t/llvm-llvm/11132
 
-        * Running a serial build will be **slow**. To improve speed, try running a
-          parallel build. That's done by default in Ninja; for ``make``, use the option
-          ``-j NNN``, where ``NNN`` is the number of parallel jobs to run.
-          In most cases, you get the best performance if you specify the number of CPU threads you have.
-          On some Unix systems, you can specify this with ``-j$(nproc)``.
+# 对能够处理的指令中使用的常量数字(ConstantInt)进行异或加密
 
-      * For more information see [CMake](https://llvm.org/docs/CMake.html).
+-enable-constenc
+#启用ConstantEncryption。默认关闭
 
-Consult the
-[Getting Started with LLVM](https://llvm.org/docs/GettingStarted.html#getting-started-with-llvm)
-page for detailed information on configuring and compiling LLVM. You can visit
-[Directory Layout](https://llvm.org/docs/GettingStarted.html#directory-layout)
-to learn about the layout of the source code tree.
+-constenc_times
+# ConstantEncryption在每个函数混淆的次数。默认为1
 
-## Getting in touch
+-constenc_prob
+# 每个指令被ConstantEncryption混淆的概率。默认为50
 
-Join [LLVM Discourse forums](https://discourse.llvm.org/), [discord chat](https://discord.gg/xS7Z362) or #llvm IRC channel on [OFTC](https://oftc.net/).
+-constenc_togv
+# 将常量数字(ConstantInt)替换为全局变量，以及把类型为整数的二进制运算符(BinaryOperator)的运算结果替换为全局变量。默认关闭
 
-The LLVM project has adopted a [code of conduct](https://llvm.org/docs/CodeOfConduct.html) for
-participants to all modes of communication within the project.
+-constenc_subxor
+# 替换ConstantEncryption的异或运算，使其变得更加复杂
+
+```
+
+### StringEncryption
+
+```bash
+
+-strcry_prob
+# 每个字符串中每个byte被加密的概率。默认为100。这个功能是为了给一些需要的加密强度不高，但是重视体积的人。
+```
+
+### IndirectBranch
+
+```bash
+-indibran-use-stack
+# 将跳转表的地址在Entry Block加载到栈中，每个基本块再从栈中读取。默认关闭
+
+-indibran-enc-jump-target
+# 加密跳转表和索引。默认关闭
+```
+
+-adhexrirpath
+# AntiHooking PreCompiled IR文件的路径
+```
